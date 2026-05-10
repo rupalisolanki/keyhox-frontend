@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchAdminProducts, createProduct, updateProduct, deleteProduct } from '../store/slices/productsSlice';
 import { fetchKeysByProduct, addKeys, deleteKey, fetchInventory, clearKeys } from '../store/slices/keysSlice';
 import type { AppDispatch, RootState } from '../store/store';
-import { Plus, Search, Edit, Trash2, X, Key } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, X, Key, Save, Upload } from 'lucide-react';
 
 interface AdminPanelProps {
   products: any[];
@@ -27,8 +27,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   const [addKeysMsg, setAddKeysMsg] = useState('');
 
   const [formData, setFormData] = useState<any>({
-    name: '', description: '', price: 0, category: 'Software', imageUrl: ''
+    name: '', subtitle: '', price: 0, oldPrice: 0, category: 'Software', imageUrl: '', logo: '', imageColor: 'bg-blue-600'
   });
+
+  // Extended fields
+  const [descBulletsInput, setDescBulletsInput] = useState('');
+  const [descSectionTitle, setDescSectionTitle] = useState('Overview');
+  const [descSectionText, setDescSectionText] = useState('');
+  const [activationStepsInput, setActivationStepsInput] = useState('');
+  const [activationNote, setActivationNote] = useState('');
+  const [sysReq, setSysReq] = useState({ os: '', processor: '', memory: '', storage: '', graphics: '' });
 
   useEffect(() => {
     dispatch(fetchAdminProducts());
@@ -36,22 +44,53 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
   const handleEdit = (product: any) => {
     setEditingProduct(product);
-    setFormData({ name: product.name, description: product.description, price: parseFloat(product.price), category: product.category, imageUrl: product.imageUrl || '' });
+    setFormData({
+      name: product.name, subtitle: product.subtitle || '', price: parseFloat(product.price),
+      oldPrice: product.oldPrice || 0, category: product.category, imageUrl: product.imageUrl || '',
+      logo: product.logo || '', imageColor: product.imageColor || 'bg-blue-600'
+    });
+    setDescBulletsInput(product.description?.bullets?.join('\n') || '');
+    setDescSectionTitle(product.description?.sections?.[0]?.title || 'Overview');
+    setDescSectionText(product.description?.sections?.[0]?.text || '');
+    setActivationStepsInput(product.activationGuide?.steps?.join('\n') || '');
+    setActivationNote(product.activationGuide?.note || '');
+    setSysReq({
+      os: product.systemRequirements?.os || '', processor: product.systemRequirements?.processor || '',
+      memory: product.systemRequirements?.memory || '', storage: product.systemRequirements?.storage || '',
+      graphics: product.systemRequirements?.graphics || ''
+    });
+    setKeysInput('');
     setIsEditing(true);
   };
 
   const handleAddNew = () => {
     setEditingProduct(null);
-    setFormData({ name: '', description: '', price: 0, category: 'Software', imageUrl: '' });
+    setFormData({ name: '', subtitle: '', price: 0, oldPrice: 0, category: 'Software', imageUrl: '', logo: '', imageColor: 'bg-blue-600' });
+    setDescBulletsInput(''); setDescSectionTitle('Overview'); setDescSectionText('');
+    setActivationStepsInput(''); setActivationNote('');
+    setSysReq({ os: '', processor: '', memory: '', storage: '', graphics: '' });
+    setKeysInput('');
     setIsEditing(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const payload = {
+      ...formData,
+      description: {
+        bullets: descBulletsInput.split('\n').filter(k => k.trim()),
+        sections: [{ title: descSectionTitle, text: descSectionText }]
+      },
+      activationGuide: {
+        steps: activationStepsInput.split('\n').filter(k => k.trim()),
+        note: activationNote
+      },
+      systemRequirements: sysReq,
+    };
     if (editingProduct) {
-      await dispatch(updateProduct({ id: editingProduct.id, data: formData }));
+      await dispatch(updateProduct({ id: editingProduct.id, data: payload }));
     } else {
-      await dispatch(createProduct(formData));
+      await dispatch(createProduct(payload));
     }
     setIsEditing(false);
     dispatch(fetchAdminProducts());
@@ -279,27 +318,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
         {/* Edit/Add Modal */}
         {isEditing && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
                 <h3 className="text-xl font-bold text-gray-900">{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
                 <button onClick={() => setIsEditing(false)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full"><X size={24} /></button>
               </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Product Name</label>
-                  <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none" required />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>
-                  <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none h-20" required />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+
+                {/* Basic Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Price (₹)</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Product Name</label>
+                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Subtitle</label>
+                    <input type="text" value={formData.subtitle} onChange={e => setFormData({...formData, subtitle: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Price (₹)</label>
                     <input type="number" step="0.01" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none" required />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Category</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Original Price (₹)</label>
+                    <input type="number" step="0.01" value={formData.oldPrice} onChange={e => setFormData({...formData, oldPrice: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Category</label>
                     <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none">
                       <option>Software</option>
                       <option>Creative Tools</option>
@@ -309,14 +354,96 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                       <option>Games</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Logo Text</label>
+                    <input type="text" value={formData.logo} onChange={e => setFormData({...formData, logo: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Product Image</label>
+                    <div className="flex items-center gap-3">
+                      {formData.imageUrl && (
+                        <img src={formData.imageUrl} alt="preview" className="w-14 h-14 rounded-lg object-cover border border-gray-200" />
+                      )}
+                      <label className="flex-1 cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#16a34a] transition-colors text-sm text-gray-500 hover:text-[#16a34a]">
+                        <Upload size={16} />
+                        {formData.imageUrl ? 'Change Image' : 'Upload Image'}
+                        <input type="file" accept="image/*" className="hidden" onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = () => setFormData({...formData, imageUrl: reader.result as string});
+                          reader.readAsDataURL(file);
+                        }} />
+                      </label>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Background Color Class</label>
+                    <input type="text" value={formData.imageColor} onChange={e => setFormData({...formData, imageColor: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none" placeholder="bg-blue-600" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Image URL (optional)</label>
-                  <input type="text" value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none" placeholder="https://..." />
+
+                {/* Product Details */}
+                <div className="border-t border-gray-100 pt-6">
+                  <h4 className="text-lg font-bold text-gray-900 mb-4">Product Details</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Feature Bullets (one per line)</label>
+                      <textarea value={descBulletsInput} onChange={e => setDescBulletsInput(e.target.value)} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none h-24" placeholder="Feature 1&#10;Feature 2" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="md:col-span-1">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Description Title</label>
+                        <input type="text" value={descSectionTitle} onChange={e => setDescSectionTitle(e.target.value)} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Description Text</label>
+                        <textarea value={descSectionText} onChange={e => setDescSectionText(e.target.value)} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none h-24" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-end gap-4 pt-2">
+
+                {/* Activation Guide */}
+                <div className="border-t border-gray-100 pt-6">
+                  <h4 className="text-lg font-bold text-gray-900 mb-4">Activation Guide</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Activation Steps (one per line)</label>
+                      <textarea value={activationStepsInput} onChange={e => setActivationStepsInput(e.target.value)} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none h-24" placeholder="Step 1: Download...&#10;Step 2: Install..." />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Activation Note</label>
+                      <input type="text" value={activationNote} onChange={e => setActivationNote(e.target.value)} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none" placeholder="Important: Disconnect internet before installing..." />
+                    </div>
+                  </div>
+                </div>
+
+                {/* System Requirements */}
+                <div className="border-t border-gray-100 pt-6">
+                  <h4 className="text-lg font-bold text-gray-900 mb-4">System Requirements</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {(['os','processor','memory','storage','graphics'] as const).map(field => (
+                      <div key={field}>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 capitalize">{field}</label>
+                        <input type="text" value={sysReq[field]} onChange={e => setSysReq({...sysReq, [field]: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none" placeholder={field === 'os' ? 'Windows 10/11' : field === 'processor' ? 'Intel Core i5' : field === 'memory' ? '8 GB RAM' : field === 'storage' ? '4 GB available' : 'DirectX 12'} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* License Keys */}
+                <div className="border-t border-gray-100 pt-6">
+                  <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <Key size={16} /> License Keys / Accounts (one per line)
+                  </label>
+                  <textarea value={keysInput} onChange={e => setKeysInput(e.target.value)} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#16a34a] outline-none h-32 font-mono text-sm" placeholder="KEY-XXXX-XXXX-XXXX&#10;user@email.com:password" />
+                  <p className="text-xs text-gray-500 mt-1">These keys will be distributed to customers upon purchase.</p>
+                </div>
+
+                <div className="flex justify-end gap-4 pt-4 border-t border-gray-100">
                   <button type="button" onClick={() => setIsEditing(false)} className="px-6 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancel</button>
-                  <button type="submit" className="px-6 py-2.5 bg-[#16a34a] text-white font-bold rounded-xl hover:bg-[#15803d] transition-colors">Save Product</button>
+                  <button type="submit" className="px-6 py-2.5 bg-[#16a34a] text-white font-bold rounded-xl hover:bg-[#15803d] transition-colors shadow-lg">Save Product</button>
                 </div>
               </form>
             </div>
