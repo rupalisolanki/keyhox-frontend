@@ -1,24 +1,34 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, ShieldCheck } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { login } from '../store/slices/authSlice';
+import type { AppDispatch, RootState } from '../store/store';
 
 interface AdminLoginProps {
   onLoginSuccess: () => void;
 }
 
 const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { loading } = useSelector((state: RootState) => state.auth);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (email === 'admin@keyhox.com' && password === 'keyhox') {
-      onLoginSuccess();
+    const result = await dispatch(login({ email, password }));
+    if (login.fulfilled.match(result)) {
+      if (result.payload.user.role === 'ADMIN') {
+        onLoginSuccess();
+      } else {
+        setError('Access denied. Admin privileges required.');
+      }
     } else {
-      setError('Invalid admin credentials');
+      setError(result.payload as string || 'Invalid credentials');
     }
   };
 
@@ -84,9 +94,10 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
 
             <button
               type="submit"
-              className="w-full bg-[#1e2025] text-white py-3.5 rounded-xl font-bold hover:bg-[#16a34a] transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              disabled={loading}
+              className="w-full bg-[#1e2025] text-white py-3.5 rounded-xl font-bold hover:bg-[#16a34a] disabled:opacity-60 transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
             >
-              Access Dashboard
+              {loading ? 'Verifying...' : 'Access Dashboard'}
             </button>
           </form>
         </div>

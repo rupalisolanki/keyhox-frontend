@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Check, Apple } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { login, register, clearError } from '../store/slices/authSlice';
+import type { AppDispatch, RootState } from '../store/store';
 import Logo from './Logo';
 
 interface AuthProps {
@@ -7,6 +10,9 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { loading, error: authError } = useSelector((state: RootState) => state.auth);
+
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -22,31 +28,27 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({...formData, [e.target.name]: e.target.value});
     if (error) setError('');
+    dispatch(clearError());
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (isLogin) {
-        // Temp User Logic
-        if (formData.email === 'support@keyhox.com' && formData.password === 'keyhox') {
-            console.log("Login Successful");
-            const userData = {
-                name: 'Keyhox Admin',
-                email: 'support@keyhox.com',
-                phone: '+91 98765 43210',
-                joinDate: 'January 2024'
-            };
-            if (onLoginSuccess) {
-                onLoginSuccess(userData);
-            }
-        } else {
-            setError('Invalid email or password. Try support@keyhox.com / keyhox');
-        }
+      const result = await dispatch(login({ email: formData.email, password: formData.password }));
+      if (login.fulfilled.match(result)) {
+        if (onLoginSuccess) onLoginSuccess(result.payload.user);
+      }
     } else {
-        // Registration Logic (Mock)
-        alert("Registration is currently closed for public. Please contact support.");
+      if (formData.password !== formData.confirmPassword) {
+        setError('Passwords do not match');
+        return;
+      }
+      const result = await dispatch(register({ name: formData.name, email: formData.email, password: formData.password }));
+      if (register.fulfilled.match(result)) {
+        if (onLoginSuccess) onLoginSuccess(result.payload.user);
+      }
     }
   };
 
@@ -231,9 +233,9 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
                          </div>
                      )}
                      
-                     {error && (
+                     {(error || authError) && (
                          <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-500 text-sm font-bold text-center animate-in fade-in slide-in-from-top-2">
-                             {error}
+                             {error || authError}
                          </div>
                      )}
 
@@ -247,9 +249,9 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
                          </div>
                      )}
 
-                     <button className="w-full bg-[#1e2025] hover:bg-[#16a34a] text-white font-bold py-4 rounded-xl transition-all shadow-xl hover:shadow-[#16a34a]/20 flex items-center justify-center gap-2 text-lg group">
-                         {isLogin ? "Sign In" : "Create Account"}
-                         <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                     <button disabled={loading} className="w-full bg-[#1e2025] hover:bg-[#16a34a] disabled:opacity-60 text-white font-bold py-4 rounded-xl transition-all shadow-xl hover:shadow-[#16a34a]/20 flex items-center justify-center gap-2 text-lg group">
+                         {loading ? 'Please wait...' : (isLogin ? "Sign In" : "Create Account")}
+                         {!loading && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
                      </button>
                  </form>
 

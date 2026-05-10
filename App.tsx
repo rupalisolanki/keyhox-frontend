@@ -1,4 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchProducts } from './store/slices/productsSlice';
+import { logout } from './store/slices/authSlice';
+import type { AppDispatch, RootState } from './store/store';
 import Header from './components/Header';
 import Features from './components/Features';
 import ProductGrid from './components/ProductGrid';
@@ -33,16 +37,55 @@ import LocationDetails from './components/LocationDetails';
 import { CartItem, WishlistItem, Product } from './types';
 import { Gamepad2 } from 'lucide-react';
 import { CurrencyProvider } from './context/CurrencyContext';
-import { productsDB } from './data/products';
 
 const App: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { user: authUser, token } = useSelector((state: RootState) => state.auth);
+  const { items: backendProducts } = useSelector((state: RootState) => state.products);
+
   // Authentication State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
   // Admin State
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-  const [products, setProducts] = useState<Product[]>(Object.values(productsDB));
+  const [products, setProducts] = useState<Product[]>([]);
+
+  // Fetch products from backend on mount
+  useEffect(() => {
+    dispatch(fetchProducts());
+  }, [dispatch]);
+
+  // Sync backend products to local state (map backend shape to frontend Product type)
+  useEffect(() => {
+    if (backendProducts.length > 0) {
+      const mapped: Product[] = backendProducts.map((p: any) => ({
+        id: p.id,
+        title: p.name,
+        subtitle: p.description?.substring(0, 60) || '',
+        price: parseFloat(p.price),
+        oldPrice: undefined,
+        rating: 5,
+        reviews: 0,
+        category: p.category,
+        imageUrl: p.imageUrl,
+        imageColor: 'bg-gray-800',
+        logo: p.name.substring(0, 2),
+        inStock: p.stock > 0,
+        slug: p.slug,
+      }));
+      setProducts(mapped);
+    }
+  }, [backendProducts]);
+
+  // Sync auth user from Redux (e.g. on page reload with existing token)
+  useEffect(() => {
+    if (authUser && token) {
+      setIsLoggedIn(true);
+      setUserProfile(authUser);
+      if (authUser.role === 'ADMIN') setIsAdminLoggedIn(true);
+    }
+  }, [authUser, token]);
 
   // State-based navigation
   const [view, setView] = useState<'home' | 'shop' | 'product' | 'about' | 'refund' | 'terms' | 'privacy' | 'disclaimer' | 'dmca' | 'support' | 'update' | 'contact' | 'blog' | 'blog-post' | 'seller' | 'license' | 'auth' | 'cart' | 'checkout' | 'wishlist' | 'profile' | 'software' | 'subscription' | 'games' | 'admin-login' | 'admin-panel' | 'order-success' | 'location'>('home');
@@ -74,6 +117,7 @@ const App: React.FC = () => {
   const handleAdminLogout = () => {
     setIsAdminLoggedIn(false);
     setUserProfile(null);
+    dispatch(logout());
     setView('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -226,6 +270,7 @@ const App: React.FC = () => {
   const handleLogout = () => {
       setIsLoggedIn(false);
       setUserProfile(null);
+      dispatch(logout());
       setView('auth');
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -470,10 +515,10 @@ const App: React.FC = () => {
             ) : view === 'admin-panel' ? (
                 isAdminLoggedIn ? (
                   <AdminPanel 
-                    products={products}
-                    onAddProduct={handleAddProduct}
-                    onUpdateProduct={handleUpdateProduct}
-                    onDeleteProduct={handleDeleteProduct}
+                    products={[]}
+                    onAddProduct={() => {}}
+                    onUpdateProduct={() => {}}
+                    onDeleteProduct={() => {}}
                     onLogout={handleAdminLogout}
                   />
                 ) : (
