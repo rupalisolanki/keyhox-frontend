@@ -16,6 +16,7 @@ interface FooterProps {
     onNavigateLicense?: () => void;
     onNavigateProduct?: (slug: string) => void;
     onAdminLogin?: () => void;
+    user?: any;
 }
 
 const Footer: React.FC<FooterProps> = ({ 
@@ -32,7 +33,8 @@ const Footer: React.FC<FooterProps> = ({
     onNavigateSeller,
     onNavigateLicense,
     onNavigateProduct,
-    onAdminLogin
+    onAdminLogin,
+    user
 }) => {
   return (
     <footer className="bg-[#1e2025] text-gray-400">
@@ -189,7 +191,7 @@ const Footer: React.FC<FooterProps> = ({
             </div>
             <div className="flex flex-col text-xs text-gray-500">
                 <p className="mb-1"><span className="text-gray-300 font-bold">Phone:</span> +917903554767 <span className="text-gray-300 font-bold ml-3">Email:</span> support@keyhox.com</p>
-                <p>Copyright © 2024 <span className="text-[#16a34a] font-bold">Keyhox</span>. All rights reserved. <button onClick={onAdminLogin} className="ml-2 hover:text-white transition-colors">Admin</button></p>
+                <p>Copyright © 2024 <span className="text-[#16a34a] font-bold">Keyhox</span>. All rights reserved. {(!user || user.role === 'ADMIN') && <button onClick={onAdminLogin} className="ml-2 hover:text-white transition-colors">Admin</button>}</p>
             </div>
           </div>
 

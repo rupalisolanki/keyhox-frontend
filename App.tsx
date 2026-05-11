@@ -263,7 +263,12 @@ const App: React.FC = () => {
       setIsLoggedIn(true);
       setUserProfile(user);
       setProfileTab('dashboard');
-      setView('profile');
+      if (user.role === 'ADMIN') {
+        setIsAdminLoggedIn(true);
+        setView('admin-panel');
+      } else {
+        setView('profile');
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -560,6 +565,7 @@ const App: React.FC = () => {
             onNavigateLicense={navigateToLicense}
             onNavigateProduct={navigateToProduct}
             onAdminLogin={navigateToAdminLogin}
+            user={userProfile}
         />
         <MobileBottomNav 
             onNavigateHome={navigateToHome} 

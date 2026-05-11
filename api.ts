@@ -32,10 +32,66 @@ export const apiGetProductBySlug = (slug: string) => req<{ product: any }>(`/pro
 
 // Products (admin)
 export const apiGetAdminProducts = () => req<{ products: any[] }>('/admin/products');
-export const apiCreateProduct = (data: any) =>
-  req<{ product: any }>('/products', { method: 'POST', body: JSON.stringify(data) });
-export const apiUpdateProduct = (id: string, data: any) =>
-  req<{ product: any }>(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const apiCreateProduct = async (data: any) => {
+  const formData = new FormData();
+  Object.keys(data).forEach(key => {
+    if (key === 'imageUrl' && data[key]?.startsWith('data:image/')) {
+      // Convert base64 to File
+      const blob = dataURLtoBlob(data[key]);
+      formData.append('image', blob, 'product-image.png');
+    } else if (key === 'description' || key === 'activationGuide' || key === 'systemRequirements') {
+      formData.append(key, JSON.stringify(data[key]));
+    } else if (data[key] !== undefined && data[key] !== null) {
+      formData.append(key, data[key]);
+    }
+  });
+  
+  const token = getToken();
+  const res = await fetch(`${BASE}/products`, {
+    method: 'POST',
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: formData,
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || 'Failed to create product');
+  return result;
+};
+
+export const apiUpdateProduct = async (id: string, data: any) => {
+  const formData = new FormData();
+  Object.keys(data).forEach(key => {
+    if (key === 'imageUrl' && data[key]?.startsWith('data:image/')) {
+      const blob = dataURLtoBlob(data[key]);
+      formData.append('image', blob, 'product-image.png');
+    } else if (key === 'description' || key === 'activationGuide' || key === 'systemRequirements') {
+      formData.append(key, JSON.stringify(data[key]));
+    } else if (data[key] !== undefined && data[key] !== null) {
+      formData.append(key, data[key]);
+    }
+  });
+  
+  const token = getToken();
+  const res = await fetch(`${BASE}/products/${id}`, {
+    method: 'PUT',
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: formData,
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || 'Failed to update product');
+  return result;
+};
+
+function dataURLtoBlob(dataURL: string): Blob {
+  const arr = dataURL.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  return new Blob([u8arr], { type: mime });
+}
+
 export const apiDeleteProduct = (id: string) =>
   req<{ message: string }>(`/products/${id}`, { method: 'DELETE' });
 

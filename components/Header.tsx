@@ -432,7 +432,7 @@ const Header: React.FC<HeaderProps> = ({
                              </div>
                              <div className="py-2">
                                  {/* Admin Link or Regular User Links */}
-                                 {(user as any).isAdmin ? (
+                                 {(user as any).isAdmin || (user as any).role === 'ADMIN' ? (
                                      <button onClick={() => { if(onNavigateAuth) onNavigateAuth(); }} className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-[#16a34a]/10 hover:text-[#16a34a] flex items-center gap-3 transition-colors">
                                          <Settings size={16} /> Admin Dashboard
                                      </button>
