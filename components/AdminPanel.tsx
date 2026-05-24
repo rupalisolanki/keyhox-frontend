@@ -3,7 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchAdminProducts, createProduct, updateProduct, deleteProduct } from '../store/slices/productsSlice';
 import { fetchKeysByProduct, addKeys, deleteKey, fetchInventory, clearKeys } from '../store/slices/keysSlice';
 import type { AppDispatch, RootState } from '../store/store';
-import { Plus, Search, Edit, Trash2, X, Key, Save, Upload } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, X, Key, Save, Upload, Ticket } from 'lucide-react';
+import { apiGetAdminTickets, apiUpdateTicketStatus } from '../api';
 
 interface AdminPanelProps {
   products: any[];
@@ -18,13 +19,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   const { items: products, loading: productsLoading, error: productsError } = useSelector((state: RootState) => state.products);
   const { keys, counts, loading: keysLoading, error: keysError } = useSelector((state: RootState) => state.keys);
 
-  const [activeTab, setActiveTab] = useState<'products' | 'keys'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'keys' | 'tickets'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [keysInput, setKeysInput] = useState('');
   const [addKeysMsg, setAddKeysMsg] = useState('');
+
+  // Tickets state
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [ticketStatusFilter, setTicketStatusFilter] = useState('');
+
+  useEffect(() => {
+    if (activeTab === 'tickets') {
+      setTicketsLoading(true);
+      apiGetAdminTickets(ticketStatusFilter ? { status: ticketStatusFilter } : undefined)
+        .then((d: any) => setTickets(d.tickets))
+        .catch(() => {})
+        .finally(() => setTicketsLoading(false));
+    }
+  }, [activeTab, ticketStatusFilter]);
+
+  const handleUpdateTicketStatus = async (id: string, status: string) => {
+    try {
+      await apiUpdateTicketStatus(id, status);
+      setTickets(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
 
   const [formData, setFormData] = useState<any>({
     name: '', subtitle: '', price: 0, oldPrice: 0, category: 'Software', imageUrl: '', logo: '', imageColor: 'bg-blue-600'
@@ -163,6 +188,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
             className={`px-6 py-3 rounded-xl font-bold transition-colors ${activeTab === 'keys' ? 'bg-white text-[#16a34a] shadow-sm' : 'text-gray-500 hover:bg-white/50'}`}
           >
             Keys Management
+          </button>
+          <button
+            onClick={() => setActiveTab('tickets')}
+            className={`px-6 py-3 rounded-xl font-bold transition-colors ${activeTab === 'tickets' ? 'bg-white text-[#16a34a] shadow-sm' : 'text-gray-500 hover:bg-white/50'}`}
+          >
+            Support Tickets
           </button>
         </div>
 
@@ -305,6 +336,76 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                               <Trash2 size={16} />
                             </button>
                           )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'tickets' && (
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Ticket size={20} /> Support Tickets</h2>
+              <select
+                value={ticketStatusFilter}
+                onChange={e => setTicketStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#16a34a] outline-none"
+              >
+                <option value="">All Statuses</option>
+                <option value="OPEN">Open</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="RESOLVED">Resolved</option>
+                <option value="CLOSED">Closed</option>
+              </select>
+            </div>
+            {ticketsLoading ? (
+              <div className="text-center py-12 text-gray-400">Loading tickets...</div>
+            ) : tickets.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">No tickets found</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 text-gray-500 text-xs uppercase">
+                      <th className="pb-3 pr-4">Name / Email</th>
+                      <th className="pb-3 pr-4">Subject</th>
+                      <th className="pb-3 pr-4">Type</th>
+                      <th className="pb-3 pr-4">Date</th>
+                      <th className="pb-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tickets.map(t => (
+                      <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="py-3 pr-4">
+                          <p className="font-medium text-gray-900">{t.name}</p>
+                          <p className="text-gray-400 text-xs">{t.email}</p>
+                        </td>
+                        <td className="py-3 pr-4 max-w-[200px] truncate text-gray-700">{t.subject}</td>
+                        <td className="py-3 pr-4">
+                          <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">{t.type}</span>
+                        </td>
+                        <td className="py-3 pr-4 text-gray-500 text-xs">{new Date(t.createdAt).toLocaleDateString()}</td>
+                        <td className="py-3">
+                          <select
+                            value={t.status}
+                            onChange={e => handleUpdateTicketStatus(t.id, e.target.value)}
+                            className={`px-2 py-1 rounded-full text-xs font-bold border-0 outline-none cursor-pointer ${
+                              t.status === 'OPEN' ? 'bg-blue-100 text-blue-700' :
+                              t.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-700' :
+                              t.status === 'RESOLVED' ? 'bg-green-100 text-green-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            <option value="OPEN">Open</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="RESOLVED">Resolved</option>
+                            <option value="CLOSED">Closed</option>
+                          </select>
                         </td>
                       </tr>
                     ))}

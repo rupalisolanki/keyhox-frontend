@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, Mail, Ticket, Upload, Send, HelpCircle, FileText, ShieldCheck, BookOpen, AlertCircle, X, Check, Paperclip, AlertTriangle } from 'lucide-react';
+import { apiSubmitTicket } from '../api';
 
 interface ContactUsProps {
     onNavigateRefund?: () => void;
@@ -44,11 +45,21 @@ const ContactUs: React.FC<ContactUsProps> = ({ onNavigateRefund, onNavigateTerms
   }, [showTicketModal]);
 
   // Main Form Handlers
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form Data:", formData);
-    console.log("Attached File:", selectedFile);
-    alert('Thank you for contacting us. We have received your request.');
+    try {
+      await apiSubmitTicket({
+        name: formData.name,
+        email: formData.email,
+        subject: `[${formData.issueType}] ${formData.orderId ? `Order #${formData.orderId}` : 'General Inquiry'}`,
+        message: formData.message,
+        type: 'CONTACT',
+      });
+      alert('Thank you for contacting us. We have received your request.');
+      setFormData({ name: '', email: '', orderId: '', issueType: 'Delivery', message: '' });
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit. Please try again.');
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -100,15 +111,23 @@ const ContactUs: React.FC<ContactUsProps> = ({ onNavigateRefund, onNavigateTerms
       if (ticketFileRef.current) ticketFileRef.current.value = '';
   }
 
-  const handleTicketSubmit = (e: React.FormEvent) => {
+  const handleTicketSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      // Simulate API call
-      setTimeout(() => {
-          alert(`Ticket Created! Reference ID: #${Math.floor(Math.random() * 100000)}`);
-          setShowTicketModal(false);
-          setTicketForm({ subject: '', email: '', department: 'Technical Support', priority: 'Medium', orderId: '', description: '' });
-          setTicketFile(null);
-      }, 500);
+      try {
+        const res = await apiSubmitTicket({
+          name: ticketForm.email.split('@')[0],
+          email: ticketForm.email,
+          subject: ticketForm.subject,
+          message: `[${ticketForm.department}] [Priority: ${ticketForm.priority}]${ticketForm.orderId ? ` [Order: ${ticketForm.orderId}]` : ''}\n\n${ticketForm.description}`,
+          type: 'SUPPORT',
+        });
+        alert(`Ticket Created! Reference ID: #${res.ticketId.slice(0, 8).toUpperCase()}`);
+        setShowTicketModal(false);
+        setTicketForm({ subject: '', email: '', department: 'Technical Support', priority: 'Medium', orderId: '', description: '' });
+        setTicketFile(null);
+      } catch (err: any) {
+        alert(err.message || 'Failed to create ticket. Please try again.');
+      }
   }
 
   return (

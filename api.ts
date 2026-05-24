@@ -103,3 +103,14 @@ export const apiGetKeysByProduct = (productId: string, status?: string) =>
 export const apiDeleteKey = (keyId: string) =>
   req<any>(`/keys/${keyId}`, { method: 'DELETE' });
 export const apiGetInventory = () => req<any>('/admin/inventory');
+
+// Support
+export const apiGetSupportPolicy = () => req<any>('/support-policy');
+export const apiSubmitTicket = (data: { name: string; email: string; subject: string; message: string; type?: string }) =>
+  req<{ message: string; ticketId: string }>('/support/ticket', { method: 'POST', body: JSON.stringify(data) });
+export const apiGetAdminTickets = (params?: { status?: string; type?: string; page?: number }) => {
+  const q = new URLSearchParams(params as any).toString();
+  return req<any>(`/admin/support/tickets${q ? `?${q}` : ''}`);
+};
+export const apiUpdateTicketStatus = (id: string, status: string) =>
+  req<any>(`/admin/support/tickets/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
