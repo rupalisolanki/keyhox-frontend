@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { apiAddKeys, apiGetKeysByProduct, apiDeleteKey, apiGetInventory } from '../../api';
+import { apiAddKeys, apiGetKeysByProduct, apiDeleteKey, apiGetInventory, toast } from '../../api';
 
 interface KeysState {
   keys: any[];
@@ -61,14 +61,18 @@ const keysSlice = createSlice({
       .addCase(fetchKeysByProduct.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
 
       .addCase(addKeys.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(addKeys.fulfilled, (state) => { state.loading = false; })
-      .addCase(addKeys.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
+      .addCase(addKeys.fulfilled, (state, action) => {
+        state.loading = false;
+        toast(`Keys added successfully! (${action.payload.summary?.added ?? 0} added)`, 'success');
+      })
+      .addCase(addKeys.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; toast(action.payload as string || 'Failed to add keys', 'error'); })
 
       .addCase(deleteKey.fulfilled, (state, action) => {
         state.keys = state.keys.filter(k => k.id !== action.payload);
         if (state.counts) state.counts.available = Math.max(0, state.counts.available - 1);
+        toast('Key deleted successfully!', 'success');
       })
-      .addCase(deleteKey.rejected, (state, action) => { state.error = action.payload as string; })
+      .addCase(deleteKey.rejected, (state, action) => { state.error = action.payload as string; toast(action.payload as string || 'Failed to delete key', 'error'); })
 
       .addCase(fetchInventory.fulfilled, (state, action) => {
         state.inventory = action.payload.summary;

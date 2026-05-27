@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, Mail, Ticket, Upload, Send, HelpCircle, FileText, ShieldCheck, BookOpen, AlertCircle, X, Check, Paperclip, AlertTriangle } from 'lucide-react';
-import { apiSubmitTicket } from '../api';
+import { apiSubmitTicket, toast } from '../api';
 
 interface ContactUsProps {
     onNavigateRefund?: () => void;
@@ -55,10 +55,10 @@ const ContactUs: React.FC<ContactUsProps> = ({ onNavigateRefund, onNavigateTerms
         message: formData.message,
         type: 'CONTACT',
       });
-      alert('Thank you for contacting us. We have received your request.');
+      toast('Message sent! We have received your request and will get back to you soon.', 'success');
       setFormData({ name: '', email: '', orderId: '', issueType: 'Delivery', message: '' });
     } catch (err: any) {
-      alert(err.message || 'Failed to submit. Please try again.');
+      toast(err.message || 'Failed to submit. Please try again.', 'error');
     }
   };
 
@@ -121,12 +121,12 @@ const ContactUs: React.FC<ContactUsProps> = ({ onNavigateRefund, onNavigateTerms
           message: `[${ticketForm.department}] [Priority: ${ticketForm.priority}]${ticketForm.orderId ? ` [Order: ${ticketForm.orderId}]` : ''}\n\n${ticketForm.description}`,
           type: 'SUPPORT',
         });
-        alert(`Ticket Created! Reference ID: #${res.ticketId.slice(0, 8).toUpperCase()}`);
+        toast(`Ticket created! Reference ID: #${res.ticketId.slice(0, 8).toUpperCase()}`, 'success');
         setShowTicketModal(false);
         setTicketForm({ subject: '', email: '', department: 'Technical Support', priority: 'Medium', orderId: '', description: '' });
         setTicketFile(null);
       } catch (err: any) {
-        alert(err.message || 'Failed to create ticket. Please try again.');
+        toast(err.message || 'Failed to create ticket. Please try again.', 'error');
       }
   }
 

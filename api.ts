@@ -2,6 +2,12 @@ const BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
 
 const getToken = () => localStorage.getItem('token');
 
+// Toast registry — registered once from ToastProvider
+type ToastFn = (msg: string, type: 'success' | 'error') => void;
+let _toast: ToastFn | null = null;
+export const registerToast = (fn: ToastFn) => { _toast = fn; };
+export const toast = (msg: string, type: 'success' | 'error' = 'success') => _toast?.(msg, type);
+
 async function req<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
@@ -13,8 +19,19 @@ async function req<T>(path: string, options: RequestInit = {}): Promise<T> {
     },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || data.errors?.[0]?.msg || 'Request failed');
+  if (!res.ok) {
+    const msg = data.error || data.errors?.[0]?.msg || 'Request failed';
+    toast(msg, 'error');
+    throw new Error(msg);
+  }
   return data;
+}
+
+/** Wrap any api call with a success message; errors are auto-toasted by req() */
+export async function withToast<T>(promise: Promise<T>, successMsg: string): Promise<T> {
+  const result = await promise;
+  toast(successMsg, 'success');
+  return result;
 }
 
 // Auth
@@ -25,6 +42,7 @@ export const apiRegister = (name: string, email: string, password: string) =>
   req<{ token: string; user: any }>('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password }) });
 
 export const apiGetMe = () => req<{ user: any }>('/users/me');
+export const apiLogout = () => req<{ message: string }>('/auth/logout', { method: 'POST' });
 
 // Products (public)
 export const apiGetProducts = () => req<{ products: any[]; total: number }>('/products');

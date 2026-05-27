@@ -5,6 +5,7 @@ import {
   apiCreateProduct,
   apiUpdateProduct,
   apiDeleteProduct,
+  toast,
 } from '../../api';
 
 interface ProductsState {
@@ -77,19 +78,21 @@ const productsSlice = createSlice({
       .addCase(fetchAdminProducts.fulfilled, (state, action) => { state.loading = false; state.items = action.payload; })
       .addCase(fetchAdminProducts.rejected, rejected)
 
-      .addCase(createProduct.fulfilled, (state, action) => { state.items.unshift(action.payload); })
-      .addCase(createProduct.rejected, rejected)
+      .addCase(createProduct.fulfilled, (state, action) => { state.items.unshift(action.payload); toast('Product created successfully!', 'success'); })
+      .addCase(createProduct.rejected, (state, action) => { state.error = action.payload as string; toast(action.payload as string || 'Failed to create product', 'error'); })
 
       .addCase(updateProduct.fulfilled, (state, action) => {
         const idx = state.items.findIndex(p => p.id === action.payload.id);
         if (idx !== -1) state.items[idx] = action.payload;
+        toast('Product updated successfully!', 'success');
       })
-      .addCase(updateProduct.rejected, rejected)
+      .addCase(updateProduct.rejected, (state, action) => { state.error = action.payload as string; toast(action.payload as string || 'Failed to update product', 'error'); })
 
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.items = state.items.filter(p => p.id !== action.payload);
+        toast('Product deleted successfully!', 'success');
       })
-      .addCase(deleteProduct.rejected, rejected);
+      .addCase(deleteProduct.rejected, (state, action) => { state.error = action.payload as string; toast(action.payload as string || 'Failed to delete product', 'error'); });
   },
 });
 

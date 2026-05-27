@@ -4,7 +4,7 @@ import { fetchAdminProducts, createProduct, updateProduct, deleteProduct } from 
 import { fetchKeysByProduct, addKeys, deleteKey, fetchInventory, clearKeys } from '../store/slices/keysSlice';
 import type { AppDispatch, RootState } from '../store/store';
 import { Plus, Search, Edit, Trash2, X, Key, Save, Upload, Ticket } from 'lucide-react';
-import { apiGetAdminTickets, apiUpdateTicketStatus } from '../api';
+import { apiGetAdminTickets, apiUpdateTicketStatus, toast } from '../api';
 
 interface AdminPanelProps {
   products: any[];
@@ -46,8 +46,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     try {
       await apiUpdateTicketStatus(id, status);
       setTickets(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+      toast('Ticket status updated successfully!', 'success');
     } catch (err: any) {
-      alert(err.message);
+      toast(err.message || 'Failed to update ticket status', 'error');
     }
   };
 
