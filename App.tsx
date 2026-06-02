@@ -37,10 +37,11 @@ import LocationDetails from './components/LocationDetails';
 import { CartItem, WishlistItem, Product } from './types';
 import { Gamepad2 } from 'lucide-react';
 import { CurrencyProvider } from './context/CurrencyContext';
+import { useInactivityLogout } from './hooks/useInactivityLogout';
 
 const App: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { user: authUser, token } = useSelector((state: RootState) => state.auth);
+  const { user: authUser } = useSelector((state: RootState) => state.auth);
   const { items: backendProducts } = useSelector((state: RootState) => state.products);
 
   // Authentication State
@@ -80,12 +81,24 @@ const App: React.FC = () => {
 
   // Sync auth user from Redux (e.g. on page reload with existing token)
   useEffect(() => {
-    if (authUser && token) {
+    if (authUser) {
       setIsLoggedIn(true);
       setUserProfile(authUser);
       if (authUser.role === 'ADMIN') setIsAdminLoggedIn(true);
     }
-  }, [authUser, token]);
+  }, [authUser]);
+
+  // Sync logout — when Redux user is cleared, reset local state
+  useEffect(() => {
+    if (!authUser) {
+      setIsLoggedIn(false);
+      setUserProfile(null);
+      setIsAdminLoggedIn(false);
+    }
+  }, [authUser]);
+
+  // Auto-logout after 30 min of inactivity
+  useInactivityLogout(isLoggedIn || isAdminLoggedIn);
 
   // State-based navigation
   const [view, setView] = useState<'home' | 'shop' | 'product' | 'about' | 'refund' | 'terms' | 'privacy' | 'disclaimer' | 'dmca' | 'support' | 'update' | 'contact' | 'blog' | 'blog-post' | 'seller' | 'license' | 'auth' | 'cart' | 'checkout' | 'wishlist' | 'profile' | 'software' | 'subscription' | 'games' | 'admin-login' | 'admin-panel' | 'order-success' | 'location'>('home');

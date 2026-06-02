@@ -1,19 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { apiLogin, apiRegister, apiGetMe, apiLogout, toast } from '../../api';
 
-const saveToken = (token: string) => localStorage.setItem('token', token);
-const removeToken = () => localStorage.removeItem('token');
-
 interface AuthState {
   user: any | null;
-  token: string | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: AuthState = {
   user: null,
-  token: localStorage.getItem('token'),
   loading: false,
   error: null,
 };
@@ -35,7 +30,6 @@ export const getMe = createAsyncThunk('auth/getMe', async (_, { rejectWithValue 
 
 export const logout = createAsyncThunk('auth/logout', async () => {
   try { await apiLogout(); } catch { /* clear client state regardless */ }
-  removeToken();
 });
 
 const authSlice = createSlice({
@@ -49,9 +43,7 @@ const authSlice = createSlice({
       .addCase(login.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
-        state.token = action.payload.token;
         state.user = action.payload.user;
-        saveToken(action.payload.token);
         toast('Logged in successfully! Welcome back.', 'success');
       })
       .addCase(login.rejected, (state, action) => {
@@ -64,9 +56,7 @@ const authSlice = createSlice({
       .addCase(register.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
-        state.token = action.payload.token;
         state.user = action.payload.user;
-        saveToken(action.payload.token);
         toast('Account created! You can now login with your credentials.', 'success');
       })
       .addCase(register.rejected, (state, action) => {
@@ -77,12 +67,11 @@ const authSlice = createSlice({
 
     builder
       .addCase(getMe.fulfilled, (state, action) => { state.user = action.payload.user; })
-      .addCase(getMe.rejected, (state) => { state.user = null; state.token = null; removeToken(); });
+      .addCase(getMe.rejected, (state) => { state.user = null; });
 
     builder
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
-        state.token = null;
         state.error = null;
         toast('Logged out successfully!', 'success');
       });

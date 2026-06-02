@@ -1,7 +1,5 @@
 const BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
 
-const getToken = () => localStorage.getItem('token');
-
 // Toast registry — registered once from ToastProvider
 type ToastFn = (msg: string, type: 'success' | 'error') => void;
 let _toast: ToastFn | null = null;
@@ -9,12 +7,11 @@ export const registerToast = (fn: ToastFn) => { _toast = fn; };
 export const toast = (msg: string, type: 'success' | 'error' = 'success') => _toast?.(msg, type);
 
 async function req<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
@@ -65,10 +62,9 @@ export const apiCreateProduct = async (data: any) => {
     }
   });
   
-  const token = getToken();
   const res = await fetch(`${BASE}/products`, {
     method: 'POST',
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    credentials: 'include',
     body: formData,
   });
   const result = await res.json();
@@ -89,10 +85,9 @@ export const apiUpdateProduct = async (id: string, data: any) => {
     }
   });
   
-  const token = getToken();
   const res = await fetch(`${BASE}/products/${id}`, {
     method: 'PUT',
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    credentials: 'include',
     body: formData,
   });
   const result = await res.json();
